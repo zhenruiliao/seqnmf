@@ -26,13 +26,13 @@ def shift_factors(W, H):
     N, K, L, T = get_shapes(W, H)
 
     if L > 1:
-        center = np.max([np.floor(L / 2), 1])
+        center = int(np.max([np.floor(L / 2), 1]))
         Wpad = np.concatenate((np.zeros([N, K, L]), W, np.zeros([N, K, L])), axis=2)
 
         for i in np.arange(K):
             temp = np.sum(np.squeeze(W[:, i, :]), axis=0)
             # return temp, temp
-            cmass = np.max(np.floor(np.sum(temp * np.arange(1, L + 1)) / np.sum(temp)), axis=0)
+            cmass = int(np.max(np.floor(np.sum(temp * np.arange(1, L + 1)) / np.sum(temp)), axis=0))
             Wpad[:, i, :] = np.roll(np.squeeze(Wpad[:, i, :]), center - cmass, axis=1)
             H[i, :] = np.roll(H[i, :], cmass - center, axis=0)
 

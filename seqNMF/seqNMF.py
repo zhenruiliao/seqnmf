@@ -2,15 +2,17 @@ import numpy as np
 import seaborn as sns
 from scipy.signal import convolve2d as conv2
 from matplotlib import pyplot as plt
-from helpers import reconstruct, shift_factors, compute_loadings_percent_power
+from matplotlib import gridspec
+from helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes
 
-def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
+def seq_nmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
             plot_it=True, max_iter=20, tol=-np.inf, shift=True, sort_factors=True, \
             lambda_L1W=0, lambda_L1H=0, lambda_OrthH=0, lambda_OrthW=0, M=None, \
             use_W_update=True, W_fixed=False):
 
     N = X.shape[0]
-    T = X.shape[1]
+    T = X.shape[1] + 2*L
+    X = np.concatenate((np.zeros([N, L]), X, np.zeros([N, L])), axis=1)
 
     if W_init is None:
         W_init = np.max(X) * np.random.rand(N, K, L)
@@ -66,7 +68,10 @@ def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
         H *= np.divide(WTX, WTX_hat + dRdH + eps)
 
         if shift:
-            W, H = shift_factors(W, H)
+            try:
+                W, H = shift_factors(W, H)
+            except:
+                pass
             W += eps
 
         norms = np.sqrt(np.sum(np.power(H, 2), axis=1)).T
@@ -105,11 +110,20 @@ def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
         X_hat = reconstruct(W, H)
         mask = M == 0
         X[mask] = X_hat[mask]
-        cost[i] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
+        cost[i+1] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
 
         if plot_it:
-            h = plot(W, H, X_hat)
-            h.set_title(f'iteration {i}')
+            if i > 0:
+                try:
+                    h.close()
+                except:
+                    pass
+            h = plot(W, H)
+            h.suptitle(f'iteration {i}', fontsize=8)
+            try:
+                h.show()
+            except:
+                pass
 
         if last_time:
             break
@@ -132,15 +146,31 @@ def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
 
     return W, H, cost, loadings, power
 
-def plot(W, H, cmap='Spectral'):
+def plot(W, H, cmap='gray_r', factor_cmap='Spectral'):
+    N, K, L, T = get_shapes(W, H)
+
     data_recon = reconstruct(W, H)
-    clims = [0, np.percentile(data_recon, 99)]
 
-    f, (ax, ax_w, ax_h, ax_data) = plt.subplots(2, 2)
+    fig = plt.figure(figsize=(5, 5))
+    gs = gridspec.GridSpec(2, 2, width_ratios=[1, 4], height_ratios=[1, 4])
+    ax_h = plt.subplot(gs[1])
+    ax_w = plt.subplot(gs[2])
+    ax_data = plt.subplot(gs[3])
 
-    sns.heatmap(W, cmap=cmap, ax=ax_w, vmin=clims[0], vmax=clims[1])
-    sns.heatmap(H, cmap=cmap, ax=ax_h, vmin=clims[0], vmax=clims[1])
-    sns.heatmap(data_recon, cmap=cmap, ax=ax_data, vmin=clims[0], vmax=clims[1])
+    #plot W, H, and data_recon
+    sns.heatmap(np.hstack(list(map(np.squeeze, np.split(W, K, axis=1)))), cmap=cmap, ax=ax_w, cbar=False)
+    sns.heatmap(H, cmap=cmap, ax=ax_h, cbar=False)
+    sns.heatmap(data_recon, cmap=cmap, ax=ax_data, cbar=False)
 
-    return f
+    #add dividing bars for factors of W and H
+    factor_colors = sns.color_palette(factor_cmap, K)
+    for k in np.arange(K):
+        plt.sca(ax_w)
+        start_w = k*L
+        plt.plot([start_w, start_w], [0, N-1], '-', color=factor_colors[k])
+
+        plt.sca(ax_h)
+        plt.plot([0, T-1], [k, k], '-', color=factor_colors[k])
+
+    return fig
 
