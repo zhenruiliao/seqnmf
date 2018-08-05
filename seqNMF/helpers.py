@@ -1,6 +1,4 @@
 import numpy as np
-from scipy.signal import convolve2d as conv2
-
 
 def get_shapes(W, H):
     N = W.shape[0]
