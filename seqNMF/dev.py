@@ -8,7 +8,9 @@ from seqNMF import seq_nmf, plot
 data = loadmat(os.path.join('..', 'MackeviciusData.mat'))
 W, H = seq_nmf(data['NEURAL'])
 
-plot(W, H)
+h = plot(W, H)
+h.show()
 
 sns.heatmap(data)
+plt.show()
 

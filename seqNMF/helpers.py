@@ -32,7 +32,10 @@ def shift_factors(W, H):
         for i in np.arange(K):
             temp = np.sum(np.squeeze(W[:, i, :]), axis=0)
             # return temp, temp
-            cmass = int(np.max(np.floor(np.sum(temp * np.arange(1, L + 1)) / np.sum(temp)), axis=0))
+            try:
+                cmass = int(np.max(np.floor(np.sum(temp * np.arange(1, L + 1)) / np.sum(temp)), axis=0))
+            except ValueError:
+                cmass = center
             Wpad[:, i, :] = np.roll(np.squeeze(Wpad[:, i, :]), center - cmass, axis=1)
             H[i, :] = np.roll(H[i, :], cmass - center, axis=0)
 
@@ -41,12 +44,13 @@ def shift_factors(W, H):
 
 def compute_loadings_percent_power(V, W, H):
     K = H.shape[0]
-    loadings = np.zeros([1, K])
-    var_v = np.sum(np.pow(V, 2))
+    loadings = np.zeros(K)
+    var_v = np.sum(np.power(V, 2))
 
     for i in np.arange(K):
-        WH = reconstruct(W[:, i, :], H[i, :])
-        loadings[i] = np.divide(np.sum(np.multiply(2 * V.flatten(), WH.flatten()) - np.pow(WH.flatten(), 2)), var_v)
+        WH = reconstruct(np.reshape(W[:, i, :], [W.shape[0], 1, W.shape[2]]),\
+                         np.reshape(H[i, :], [1, H.shape[1]]))
+        loadings[i] = np.divide(np.sum(np.multiply(2 * V.flatten(), WH.flatten()) - np.power(WH.flatten(), 2)), var_v)
 
     loadings[loadings < 0] = 0
     return loadings

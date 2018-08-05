@@ -6,7 +6,7 @@ from matplotlib import gridspec
 from helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes
 
 def seq_nmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
-            plot_it=True, max_iter=20, tol=-np.inf, shift=True, sort_factors=True, \
+            plot_it=True, max_iter=100, tol=-np.inf, shift=True, sort_factors=True, \
             lambda_L1W=0, lambda_L1H=0, lambda_OrthH=0, lambda_OrthW=0, M=None, \
             use_W_update=True, W_fixed=False):
 
@@ -38,8 +38,8 @@ def seq_nmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
     cost[0] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
 
     for i in np.arange(max_iter):
-        if (i == max_iter) or ((i > 6) and (cost[i + 1] + tol) > np.mean(cost[i - 6:i])):
-            cost = cost[:i]
+        if (i == max_iter-1) or ((i > 6) and (cost[i + 1] + tol) > np.mean(cost[i - 6:i])):
+            cost = cost[:(i+2)]
             last_time = True
             if i > 0:
                 Lambda = 0
@@ -68,10 +68,7 @@ def seq_nmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
         H *= np.divide(WTX, WTX_hat + dRdH + eps)
 
         if shift:
-            try:
-                W, H = shift_factors(W, H)
-            except:
-                pass
+            W, H = shift_factors(W, H)
             W += eps
 
         norms = np.sqrt(np.sum(np.power(H, 2), axis=1)).T
@@ -120,10 +117,7 @@ def seq_nmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
                     pass
             h = plot(W, H)
             h.suptitle(f'iteration {i}', fontsize=8)
-            try:
-                h.show()
-            except:
-                pass
+            h.show()
 
         if last_time:
             break
