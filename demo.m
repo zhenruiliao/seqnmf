@@ -17,17 +17,22 @@ SeqNoiseTime = zeros(number_of_seqences,1); % Jitter parameter = 0%
 SeqNoiseNeuron = 1.*ones(number_of_seqences,1); % Participation parameter = 100%
 X = generate_data(T,Nneurons,Dt,NeuronNoise,SeqNoiseTime,SeqNoiseNeuron,0,0,0,0,0);
 
-%% Fit with seqNMF
-K = 5;
-L = 50;
-lambda =.002;
-shg; clf
-display('Running seqNMF on simulated data (2 simulated sequences + noise)')
-[W,H] = seqNMF(X,'K',K, 'L', L,'lambda', lambda);
+% %% Fit with seqNMF
+% K = 5;
+% L = 50;
+% lambda =.002;
+% shg; clf
+% display('Running seqNMF on simulated data (2 simulated sequences + noise)')
+% [W,H] = seqNMF(X,'K',K, 'L', L,'lambda', lambda);
+% 
+% %% Look at factors
+% figure; SimpleWHPlot(W,H); title('SeqNMF reconstruction')
+% figure; SimpleWHPlot(W,H,X); title('SeqNMF factors, with raw data')
 
-%% Look at factors
-figure; SimpleWHPlot(W,H); title('SeqNMF reconstruction')
-figure; SimpleWHPlot(W,H,X); title('SeqNMF factors, with raw data')
+load MackeviciusData
+[W, H, cost,loadings,power]= seqNMF(NEURAL);
+
+
 
 %% load example HVC calcium imaging data (from 6991FirstFewDaysForBatch)
 clear all
