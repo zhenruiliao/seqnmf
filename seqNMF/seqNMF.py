@@ -2,7 +2,7 @@ import numpy as np
 import seaborn as sns
 from scipy.signal import convolve2d as conv2
 from matplotlib import pyplot as plt
-from .helpers import reconstruct, shift_factors, compute_loading_percent_power
+from helpers import reconstruct, shift_factors, compute_loadings_percent_power
 
 def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
             plot_it=True, max_iter=20, tol=-np.inf, shift=True, sort_factors=True, \

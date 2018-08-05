@@ -39,7 +39,7 @@ def shift_factors(W, H):
     return Wpad[:, :, L:-L], H
 
 
-def compute_loading_percent_power(V, W, H):
+def compute_loadings_percent_power(V, W, H):
     K = H.shape[0]
     loadings = np.zeros([1, K])
     var_v = np.sum(np.pow(V, 2))
