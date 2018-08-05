@@ -11,6 +11,6 @@ W, H, cost, loadings, power = seq_nmf(data['NEURAL'])
 h = plot(W, H)
 h.show()
 
-sns.heatmap(data)
+sns.heatmap(data['NEURAL'], cmap='gray_r')
 plt.show()
 
