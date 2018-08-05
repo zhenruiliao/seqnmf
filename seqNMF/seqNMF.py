@@ -95,7 +95,7 @@ def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
                     dRdW = 0
 
                 if lambda_OrthW > 0:
-                    dWWdW = lambda_OrthW * W_flat * (1. - np.eye(K)) #TODO: CHECK THIS (probably needs to be dotprod)
+                    dWWdW = np.dot(lambda_OrthW * W_flat, 1. - np.eye(K)) #TODO: CHECK THIS...
                 else:
                     dWWdW = 0
 
