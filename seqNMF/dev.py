@@ -6,7 +6,7 @@ from scipy.io import loadmat
 from seqNMF import seq_nmf, plot
 
 data = loadmat(os.path.join('..', 'MackeviciusData.mat'))
-W, H = seq_nmf(data['NEURAL'])
+W, H, cost, loadings, power = seq_nmf(data['NEURAL'])
 
 h = plot(W, H)
 h.show()
