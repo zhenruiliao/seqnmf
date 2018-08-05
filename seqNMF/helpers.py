@@ -27,7 +27,7 @@ def shift_factors(W, H):
 
     if L > 1:
         center = np.max([np.floor(L / 2), 1])
-        Wpad = np.stack((np.zeros([N, K, L]), W, np.zeros([N, K, L])), axis=2)
+        Wpad = np.concatenate((np.zeros([N, K, L]), W, np.zeros([N, K, L])), axis=2)
 
         for i in np.arange(K):
             temp = np.sum(np.squeeze(W[:, i, :]), axis=0)

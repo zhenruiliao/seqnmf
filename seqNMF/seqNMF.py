@@ -48,7 +48,7 @@ def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
             X_shifted = np.roll(X, -j + 1, axis=1)
             X_hat_shifted = np.roll(X_hat, -j + 1, axis=1)
 
-            WTX *= np.dot(W[:, :, j].T, X_shifted)
+            WTX += np.dot(W[:, :, j].T, X_shifted)
             WTX_hat += np.dot(W[:, :, j].T, X_hat_shifted)
 
         if Lambda > 0:
@@ -66,37 +66,36 @@ def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
         H *= np.divide(WTX, WTX_hat + dRdH + eps)
 
         if shift:
-            return W, H
             W, H = shift_factors(W, H)
             W += eps
 
         norms = np.sqrt(np.sum(np.power(H, 2), axis=1)).T
-        H *= np.diag(np.divide(1., norms + eps))
+        H = np.dot(np.diag(np.divide(1., norms + eps)), H)
         for j in np.arange(L):
-            W[:, :, j] *= np.diag(norms)
+            W[:, :, j] = np.dot(W[:, :, j], np.diag(norms))
 
         if not W_fixed:
             X_hat = reconstruct(W, H)
             mask = M == 0
             X[mask] = X_hat[mask]
 
-            if lambda_OrthoW > 0:
+            if lambda_OrthW > 0:
                 W_flat = np.sum(W, axis=2)
             if (Lambda > 0) and use_W_update:
                 XS = conv2(X, smooth_kernel, 'same')
 
             for j in np.arange(L):
                 H_shifted = np.roll(H, j - 1, axis=1)
-                XHT = X * H_shifted.T
-                X_hat_HT = X_hat * H_shifted.T
+                XHT = np.dot(X, H_shifted.T)
+                X_hat_HT = np.dot(X_hat, H_shifted.T)
 
                 if (Lambda > 0) and use_W_update:
-                    dRdW = Lambda * XS * H_shifted.T * (1. - np.eye(K))
+                    dRdW = Lambda * np.dot(np.dot(XS, H_shifted.T), (1. - np.eye(K)))
                 else:
                     dRdW = 0
 
-                if lambda_OrthoW > 0:
-                    dWWdW = lambda_OrthoW * W_flat * (1. - np.eye(K))
+                if lambda_OrthW > 0:
+                    dWWdW = lambda_OrthW * W_flat * (1. - np.eye(K)) #TODO: CHECK THIS (probably needs to be dotprod)
                 else:
                     dWWdW = 0
 
@@ -109,12 +108,13 @@ def seq_nmf(X, K=10, L=20, Lambda=.1, W_init=None, H_init=None, \
         cost[i] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
 
         if plot_it:
-            h = plot(W, H, X_hat, False)
+            h = plot(W, H, X_hat)
             h.set_title(f'iteration {i}')
 
         if last_time:
             break
 
+    #TODO: STOPPED DEBUGGING HERE
     X = X[:, L:-L]
     X_hat = X_hat[:, L:-L]
     H = H[:, L:-L]
