@@ -10,7 +10,7 @@ This Python toolbox was developed by [Jeremy Manning](http://www.context-lab.com
 SeqNMF uses regularized convolutional non-negative matrix factorization to extract repeated sequential patterns from high-dimensional data. The algorithm can discovery of patterns directly from timeseries data without reference to external markers or labels.
 
 For more information please see:
-- [**Original MATLAB implementation**](https://github.com/FeeLab/seqNMF) 
+- [**Original MATLAB implementation**](https://github.com/FeeLab/seqNMF)
 
 - [**preprint**](https://www.biorxiv.org/content/early/2018/03/02/273128)
 
@@ -28,7 +28,7 @@ pip install --upgrade seqnmf
 
 To install the (bleeding edge) development version type
 ```
-pip install --upgrade git+https://github.com/ContextLab/seqNMF
+pip install --upgrade git+https://github.com/ContextLab/seqnmf
 ```
 
 ### Using the toolbox
