@@ -12,7 +12,7 @@ with open('LICENSE') as f:
 setup(
     name='seqnmf',
     version='0.1.0',
-    description='Python implementation of seqNMF',
+    description='Python implementation of seqnmf',
     long_description=readme,
     author='Contextual Dynamics Laboratory',
     author_email='contextualdynamics@gmail.com',

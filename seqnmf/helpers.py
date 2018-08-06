@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 
 def get_shapes(W, H):
     N = W.shape[0]
@@ -23,6 +24,8 @@ def reconstruct(W, H):
 
 
 def shift_factors(W, H):
+    warnings.simplefilter('ignore') #ignore warnings for nan-related errors
+
     N, K, L, T = get_shapes(W, H)
 
     if L > 1:

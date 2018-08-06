@@ -50,6 +50,8 @@ where `W` contains each of the `N` by `L` sequence factors and `H` describes the
 
 The `cost` output stores the reconstruction error after each iteration.  The `loadings` variable stores the factor loadings.  The `power` variable provides a measure of how well the original data is captured by the full reconstruction.
 
+The `plot` function may be used to visualize the discovered structure by calling `plot(W, H)`.
+
 ### Demo
 
 An example dataset, ported from the MATLAB toolbox, is provided as part of the seqnmf Python toolbox.  To access it and apply seqNMF on the example data, run:

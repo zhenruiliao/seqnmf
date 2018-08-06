@@ -3,12 +3,12 @@ import seaborn as sns
 from scipy.signal import convolve2d as conv2
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-from helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes
+from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes
 
-def seq_nmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
-            plot_it=True, max_iter=100, tol=-np.inf, shift=True, sort_factors=True, \
-            lambda_L1W=0, lambda_L1H=0, lambda_OrthH=0, lambda_OrthW=0, M=None, \
-            use_W_update=True, W_fixed=False):
+def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
+           plot_it=True, max_iter=100, tol=-np.inf, shift=True, sort_factors=True, \
+           lambda_L1W=0, lambda_L1H=0, lambda_OrthH=0, lambda_OrthW=0, M=None, \
+           use_W_update=True, W_fixed=False):
 
     N = X.shape[0]
     T = X.shape[1] + 2*L
@@ -97,7 +97,7 @@ def seq_nmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
                     dRdW = 0
 
                 if lambda_OrthW > 0:
-                    dWWdW = np.dot(lambda_OrthW * W_flat, 1. - np.eye(K)) #TODO: CHECK THIS...
+                    dWWdW = np.dot(lambda_OrthW * W_flat, 1. - np.eye(K))
                 else:
                     dWWdW = 0
 
@@ -122,7 +122,6 @@ def seq_nmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
         if last_time:
             break
 
-    #TODO: STOPPED DEBUGGING HERE
     X = X[:, L:-L]
     X_hat = X_hat[:, L:-L]
     H = H[:, L:-L]
