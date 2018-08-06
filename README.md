@@ -62,9 +62,11 @@ The `plot` function may be used to visualize the discovered structure by calling
 
 ### Demo
 
-An example dataset, ported from the MATLAB toolbox, is provided as part of the seqnmf Python toolbox.  To access it and apply seqNMF on the example data, run:
+An example dataset, ported from the MATLAB toolbox, is provided as part of the seqnmf Python toolbox.  To apply seqNMF to the example data and generate a plot, run:
 ```
-from seqnmf import seqnmf, example_data
+from seqnmf import seqnmf, plot, example_data
 
 [W, H, cost, loadings, power] = seqnmf(example_data, K=20, L=100, Lambda=0.001, plot_it=True)
+
+plot(W, H).show()
 ```
