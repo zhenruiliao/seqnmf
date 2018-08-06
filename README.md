@@ -1,24 +1,41 @@
-# seqNMF 
-Unsupervised discovery of temporal sequences in high-dimensional datasets, with applications to neuroscience
- 
-Emily Mackevicius and Andrew Bahle - FeeLab :notes: :bird: 2018
+# seqNMF
+
+This package is a Python port of the [SeqNMF MATLAB Toolbox](https://github.com/FeeLab/seqNMF).  It provides a tool for performing unsupervised discovery of temporal sequences in high-dimensional data.
+
+Credit for MATLAB toolbox: [Emily Mackevicius, Andrew Bahle, and the Fee Lab](http://web.mit.edu/feelab/).
+
+This Python toolbox was developed by [Jeremy Manning](http://www.context-lab.com/) as a hackathon project during the [2018 MIND Summer School](https://summer-mind.github.io/).
 
 ### Description
-SeqNMF is an algorithm which uses regularized convolutional non-negative matrix factorization to extract repeated sequential patterns from high-dimensional data. It has been validated using neural calcium imaging, spike data, and spectrograms, and allows the discovery of patterns directly from timeseries data without reference to external markers.
+SeqNMF uses regularized convolutional non-negative matrix factorization to extract repeated sequential patterns from high-dimensional data. The algorithm can discovery of patterns directly from timeseries data without reference to external markers or labels.
 
-For more information see our [**preprint**](https://www.biorxiv.org/content/early/2018/03/02/273128); [**COSYNE talk**](https://www.youtube.com/watch?reload=9&v=XyWtCtZ_m-8); tutorial [**video**](https://cbmm.mit.edu/video/unsupervised-discovery-temporal-sequences-high-dimensional-datasets) and [**materials**](https://stellar.mit.edu/S/project/bcs-comp-tut/materials.html); and Simons foundation [**article**](https://www.simonsfoundation.org/2018/05/04/finding-neural-patterns-in-the-din/).
+For more information please see:
+-[**Original MATLAB implementation**](https://github.com/FeeLab/seqNMF) -[**preprint**](https://www.biorxiv.org/content/early/2018/03/02/273128);-[**COSYNE talk**](https://www.youtube.com/watch?reload=9&v=XyWtCtZ_m-8); tutorial -[**video**](https://cbmm.mit.edu/video/unsupervised-discovery-temporal-sequences-high-dimensional-datasets) and -[**materials**](https://stellar.mit.edu/S/project/bcs-comp-tut/materials.html); and Simons foundation -[**article**](https://www.simonsfoundation.org/2018/05/04/finding-neural-patterns-in-the-din/)
 
-
-
-### Usage
-The main function is seqNMF.m and it can be called 
-```matlab
-[W,H,cost,loadings,power] = seqNMF(X,'K',K,'L',L,'lambda',0.01)
+### Installing the toolbox
+To install the latest official version of this toolbox type
 ```
-Where X is the data matrix, K and L are the factorization parameters and lambda is a parameter controling the strength of regularization.
+pip install --upgrade --user seqnmf
+```
 
-Specifically seqNMF factorizes the NxT data matrix X into K factors. Factor exemplars are returned in the NxKxL tensor W. Factor timecourses are returned in the KxT matrix H
+To install the (bleeding edge) development version type
+```
+pip install --upgrade --user git+https://github.com/ContextLab/seqNMF
+```
 
+### Using the toolbox
+
+Given a N (number of features) by T (number of timepoints) data matrix, `X`, the commands below may be used to factorize the data using seqNFM:
+```
+from seqnmf import seqnmf
+
+W, H, cost, loadings, power = seqnmf(X, K=20, L=100, Lambda=0.001)
+```
+
+Here `K` is the (maximum) number of factors, `L` is (maximum) sequence length, and `Lambda` is a regularization parameter.  The data matrix is factorized into a tensor product of `W` and `H` as follows:
+
+according to:
+```
                                     ----------    
                                 L  /         /|
                                   /         / |
@@ -28,10 +45,16 @@ Specifically seqNMF factorizes the NxT data matrix X into K factors. Factor exem
         |              |         |         | /           |              |
         ----------------         /----------/            ----------------
                T                      K                         T
+```
+where `W` contains each of the `N` by `L` sequence factors and `H` describes the combination of sequences that are present at each timepoint.
+
+The `cost` output stores the reconstruction error after each iteration.  The `loadings` variable stores the factor loadings.  The `power` variable provides a measure of how well the original data is captured by the full reconstruction.
 
 ### Demo
-See the [demo script](demo.m), for a demonstration of the seqNMF algorithm on synthetic data and songbird imaging data. This demo also gives examples of how to cross validate, test for significance and select parameters.
 
+An example dataset, ported from the MATLAB toolbox, is provided as part of the seqnmf Python toolbox.  To access it and apply seqNMF on the example data, run:
+```
+from seqnmf import seqnmf, example_data
 
-
-
+[W, H, cost, loadings, power] = seqnmf(example_data, K=20, L=100, Lambda=0.001, plot_it=True)
+```
