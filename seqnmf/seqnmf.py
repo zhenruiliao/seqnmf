@@ -5,13 +5,40 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes
 
-def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
-           plot_it=True, max_iter=100, tol=-np.inf, shift=True, sort_factors=True, \
-           lambda_L1W=0, lambda_L1H=0, lambda_OrthH=0, lambda_OrthW=0, M=None, \
-           use_W_update=True, W_fixed=False):
 
+def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
+           plot_it=False, max_iter=100, tol=-np.inf, shift=True, sort_factors=True,
+           lambda_L1W=0, lambda_L1H=0, lambda_OrthH=0, lambda_OrthW=0, M=None,
+           use_W_update=True, W_fixed=False):
+    '''
+    :param X: an N (features) by T (timepoints) data matrix to be factorized using seqNMF
+    :param K: the (maximum) number of factors to search for; any unused factors will be set to all zeros
+    :param L: the (maximum) number of timepoints to consider in each factor; any unused timepoints will be set to zeros
+    :param Lambda: regularization parameter (default: 0.001)
+    :param W_init: initial factors (if unspecified, use random initialization)
+    :param H_init: initial per-timepoint factor loadings (if unspecified, initialize randomly)
+    :param plot_it: if True, display progress in each update using a plot (default: False)
+    :param max_iter: maximum number of iterations/updates
+    :param tol: if cost is within tol of the average of the previous 5 updates, the algorithm will terminate (default: tol = -inf)
+    :param shift: allow timepoint shifts in H
+    :param sort_factors: sort factors by time
+    :param lambda_L1W: regularization parameter for W (default: 0)
+    :param lambda_L1H: regularization parameter for H (default: 0)
+    :param lambda_OrthH: regularization parameter for H (default: 0)
+    :param lambda_OrthW: regularization parameter for W (default: 0)
+    :param M: binary mask of the same size as X, used to ignore a subset of the data during training (default: use all data)
+    :param use_W_update: set to True for more accurate results; set to False for faster results (default: True)
+    :param W_fixed: if true, fix factors (W), e.g. for cross validation (default: False)
+
+    :return:
+    :W: N (features) by K (factors) by L (per-factor timepoints) tensor of factors
+    :H: K (factors) by T (timepoints) matrix of factor loadings (i.e. factor timecourses)
+    :cost: a vector of length (number-of-iterations + 1) containing the initial cost and cost after each update (i.e. the reconstruction error)
+    :loadings: the per-factor loadings-- i.e. the explanatory power of each individual factor
+    :power: the total power (across all factors) explained by the full reconstruction
+    '''
     N = X.shape[0]
-    T = X.shape[1] + 2*L
+    T = X.shape[1] + 2 * L
     X = np.concatenate((np.zeros([N, L]), X, np.zeros([N, L])), axis=1)
 
     if W_init is None:
@@ -38,8 +65,8 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
     cost[0] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
 
     for i in np.arange(max_iter):
-        if (i == max_iter-1) or ((i > 6) and (cost[i + 1] + tol) > np.mean(cost[i - 6:i])):
-            cost = cost[:(i+2)]
+        if (i == max_iter - 1) or ((i > 6) and (cost[i + 1] + tol) > np.mean(cost[i - 6:i])):
+            cost = cost[:(i + 2)]
             last_time = True
             if i > 0:
                 Lambda = 0
@@ -107,7 +134,7 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
         X_hat = reconstruct(W, H)
         mask = M == 0
         X[mask] = X_hat[mask]
-        cost[i+1] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
+        cost[i + 1] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
 
         if plot_it:
             if i > 0:
@@ -139,7 +166,15 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None, \
 
     return W, H, cost, loadings, power
 
+
 def plot(W, H, cmap='gray_r', factor_cmap='Spectral'):
+    '''
+    :param W: N (features) by K (factors) by L (per-factor timepoints) tensor of factors
+    :param H: K (factors) by T (timepoints) matrix of factor loadings (i.e. factor timecourses)
+    :param cmap: colormap used to draw heatmaps for the factors, factor loadings, and data reconstruction
+    :param factor_cmap: colormap used to distinguish individual factors
+    :return f: matplotlib figure handle
+    '''
     N, K, L, T = get_shapes(W, H)
 
     data_recon = reconstruct(W, H)
@@ -150,20 +185,19 @@ def plot(W, H, cmap='gray_r', factor_cmap='Spectral'):
     ax_w = plt.subplot(gs[2])
     ax_data = plt.subplot(gs[3])
 
-    #plot W, H, and data_recon
+    # plot W, H, and data_recon
     sns.heatmap(np.hstack(list(map(np.squeeze, np.split(W, K, axis=1)))), cmap=cmap, ax=ax_w, cbar=False)
     sns.heatmap(H, cmap=cmap, ax=ax_h, cbar=False)
     sns.heatmap(data_recon, cmap=cmap, ax=ax_data, cbar=False)
 
-    #add dividing bars for factors of W and H
+    # add dividing bars for factors of W and H
     factor_colors = sns.color_palette(factor_cmap, K)
     for k in np.arange(K):
         plt.sca(ax_w)
-        start_w = k*L
-        plt.plot([start_w, start_w], [0, N-1], '-', color=factor_colors[k])
+        start_w = k * L
+        plt.plot([start_w, start_w], [0, N - 1], '-', color=factor_colors[k])
 
         plt.sca(ax_h)
-        plt.plot([0, T-1], [k, k], '-', color=factor_colors[k])
+        plt.plot([0, T - 1], [k, k], '-', color=factor_colors[k])
 
     return fig
-
