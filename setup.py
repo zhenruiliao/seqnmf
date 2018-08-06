@@ -18,5 +18,6 @@ setup(
     url='https://www.context-lab.com',
     license=license,
     install_requires=requirements,
+    package_data = {'seqnmf':['data/MackeviciusData.mat']},
     packages=find_packages(exclude=('tests', 'docs'))
 )
