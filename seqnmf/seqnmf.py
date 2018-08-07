@@ -1,9 +1,12 @@
+import warnings
+warnings.simplefilter('ignore') #ignore numpy incompatability warning (harmless)
+
 import numpy as np
 import seaborn as sns
 from scipy.signal import convolve2d as conv2
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes
+from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes, trim_shapes
 
 
 def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
@@ -175,7 +178,9 @@ def plot(W, H, cmap='gray_r', factor_cmap='Spectral'):
     :param factor_cmap: colormap used to distinguish individual factors
     :return f: matplotlib figure handle
     '''
+
     N, K, L, T = get_shapes(W, H)
+    W, H = trim_shapes(W, H, N, K, L, T)
 
     data_recon = reconstruct(W, H)
 

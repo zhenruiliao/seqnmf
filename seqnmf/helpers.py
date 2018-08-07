@@ -1,17 +1,37 @@
 import numpy as np
 import warnings
 
-def get_shapes(W, H):
+def get_shapes(W, H, force_full=False):
     N = W.shape[0]
+    T = H.shape[1]
     K = W.shape[1]
     L = W.shape[2]
-    T = H.shape[1]
+
+    #trim zero padding along the L and K dimensions
+    if not force_full:
+        W_sum = W.sum(axis=0).sum(axis=1)
+        H_sum = H.sum(axis=1)
+        K = 1
+        for k in np.arange(W.shape[1]-1, 0, -1):
+            if (W_sum[k] > 0) or (H_sum[k] > 0):
+                K = k+1
+                break
+
+        L = 2
+        for l in np.arange(W.shape[2]-1, 2, -1):
+            W_sum = W.sum(axis=1).sum(axis=0)
+            if W_sum[l] > 0:
+                L = l+1
+                break
 
     return N, K, L, T
 
+def trim_shapes(W, H, N, K, L, T):
+    return W[:N, :K, :L], H[:K, :T]
 
 def reconstruct(W, H):
-    N, K, L, T = get_shapes(W, H)
+    N, K, L, T = get_shapes(W, H, force_full=True)
+    W, H = trim_shapes(W, H, N, K, L, T)
 
     H = np.hstack((np.zeros([K, L]), H, np.zeros([K, L])))
     T += 2 * L
@@ -26,7 +46,8 @@ def reconstruct(W, H):
 def shift_factors(W, H):
     warnings.simplefilter('ignore') #ignore warnings for nan-related errors
 
-    N, K, L, T = get_shapes(W, H)
+    N, K, L, T = get_shapes(W, H, force_full=True)
+    W, H = trim_shapes(W, H, N, K, L, T)
 
     if L > 1:
         center = int(np.max([np.floor(L / 2), 1]))
@@ -46,7 +67,9 @@ def shift_factors(W, H):
 
 
 def compute_loadings_percent_power(V, W, H):
-    K = H.shape[0]
+    N, K, L, T = get_shapes(W, H)
+    W, H = trim_shapes(W, H, N, K, L, T)
+
     loadings = np.zeros(K)
     var_v = np.sum(np.power(V, 2))
 
