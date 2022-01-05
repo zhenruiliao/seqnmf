@@ -1,10 +1,9 @@
-# seqNMF
+# seqNMF (jax implementation)
 
-This package is a Python port of the [SeqNMF MATLAB Toolbox](https://github.com/FeeLab/seqNMF).  It provides a tool for performing unsupervised discovery of temporal sequences in high-dimensional data.
+This is [JAX](https://github.com/google/jax) implementation of seqNMF, a tool for unsupervised discovery of temporal sequences in high-dimensional data. With GPU accelation, the code runs ~400X faster than the original Numpy implementation. 
 
 Credit for MATLAB toolbox: [Emily Mackevicius, Andrew Bahle, and the Fee Lab](http://web.mit.edu/feelab/).
-
-This Python toolbox was developed by [Jeremy Manning](http://www.context-lab.com/) as a hackathon project during the [2018 MIND Summer School](https://summer-mind.github.io/).
+Credit for Numpy implementation and README: [Jeremy Manning](http://www.context-lab.com/)
 
 ### Description
 SeqNMF uses regularized convolutional non-negative matrix factorization to extract repeated sequential patterns from high-dimensional data. The algorithm can discovery of patterns directly from timeseries data without reference to external markers or labels.
@@ -20,23 +19,17 @@ For more information please see:
 
 - Simons foundation [**article**](https://www.simonsfoundation.org/2018/05/04/finding-neural-patterns-in-the-din/)
 
-### Installing the toolbox
-To install the latest official version of this toolbox type
-```
-pip install --upgrade seqnmf
-```
+### Installation
+1. [JAX](https://github.com/google/jax)
+2. Clone this repository
+3. ```pip install -e [path/to/seqnmf-gpu]```
 
-To install the (bleeding edge) development version type
-```
-pip install --upgrade git+https://github.com/ContextLab/seqnmf
-```
 
 ### Using the toolbox
 
 Given a N (number of features) by T (number of timepoints) data matrix, `X`, the commands below may be used to factorize the data using seqNFM:
 ```
 from seqnmf import seqnmf
-
 W, H, cost, loadings, power = seqnmf(X, K=20, L=100, Lambda=0.001)
 ```
 
