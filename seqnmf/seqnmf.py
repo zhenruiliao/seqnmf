@@ -1,18 +1,56 @@
-import warnings
-warnings.simplefilter('ignore') #ignore numpy incompatability warning (harmless)
+from jax.scipy.signal import convolve2d as conv2
+import jax, jax.numpy as jnp
 
 import numpy as np
 import seaborn as sns
-from scipy.signal import convolve2d as conv2
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes, trim_shapes
+from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes, 
+
+
+def update_W(W, H, X, Lambda, M, L, K, smooth_kernel, eps, lambda_OrthW, lambda_L1W):
+    X_hat = reconstruct(W, H)
+    X = jnp.where(M==0, X_hat, X)
+    XHT = shifted_matrix_product(X,H.T,jnp.arange(L)-1,None,0)
+    X_hat_HT = shifted_matrix_product(X_hat,H.T,jnp.arange(L)-1,None,0)
+    XS = conv2(X, smooth_kernel, 'same')
+    XS_HT = shifted_matrix_product(XS, H.T, jnp.arange(L)-1,None,0)
+    dWWdW = jnp.dot(lambda_OrthW * jnp.sum(W, axis=2), 1. - jnp.eye(K))
+    dRdW = Lambda * jax.vmap(lambda x: jnp.dot(x, 1-jnp.eye(K)))(XS_HT) + lambda_L1W + dWWdW
+    return W * jnp.moveaxis(jnp.divide(XHT, X_hat_HT + dRdW + eps),0,2)
+
+
+def seqnmf_iter(W, H, X, X_hat, Lambda, M, L, K, smooth_kernel, shift, eps, 
+                W_fixed, lambda_OrthW, lambda_OrthH, lambda_L1W, lambda_L1H):
+    
+    WTX = shifted_matrix_product(W.T,X,-jnp.arange(L)+1,0,1).sum(0)
+    WTX_hat = shifted_matrix_product(W.T,X_hat,-jnp.arange(L)+1,0,1).sum(0)          
+    
+    dRdH = jnp.dot(Lambda * (1 - jnp.eye(K)), conv2(WTX, smooth_kernel, 'same'))
+    dHHdH = jnp.dot(lambda_OrthH * (1 - jnp.eye(K)), conv2(H, smooth_kernel, 'same'))
+    dRdH += lambda_L1H + dHHdH
+
+    H = H * jnp.divide(WTX, WTX_hat + dRdH + eps)
+    
+    W,H = jax.lax.cond(shift, shift_factors, lambda WH: WH, (W,H))
+    W = W + eps*shift
+
+    norms = jnp.sqrt(jnp.sum(jnp.power(H, 2), axis=1)).T
+    H = jnp.dot(jnp.diag(jnp.divide(1., norms + eps)), H)
+    W = jax.vmap(jnp.dot, in_axes=(2,None), out_axes=2)(W,jnp.diag(norms))
+    
+    update = lambda w: update_W(w, H, X, Lambda, M, L, K, smooth_kernel, eps, lambda_OrthW, lambda_L1W)
+    W = jax.lax.cond(not W_fixed, update, lambda w: w, W)
+
+    X_hat = reconstruct(W, H)
+    X = jnp.where(M==0, X_hat, X)
+    cost = jnp.sqrt(jnp.mean(jnp.power(X - X_hat, 2)))
+    return W, H, X, X_hat, cost
 
 
 def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
            plot_it=False, max_iter=100, tol=-np.inf, shift=True, sort_factors=True,
-           lambda_L1W=0, lambda_L1H=0, lambda_OrthH=0, lambda_OrthW=0, M=None,
-           use_W_update=True, W_fixed=False):
+           lambda_L1W=0, lambda_L1H=0, lambda_OrthH=0, lambda_OrthW=0, M=None, W_fixed=False):
     '''
     :param X: an N (features) by T (timepoints) data matrix to be factorized using seqNMF
     :param K: the (maximum) number of factors to search for; any unused factors will be set to all zeros
@@ -30,7 +68,6 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
     :param lambda_OrthH: regularization parameter for H (default: 0)
     :param lambda_OrthW: regularization parameter for W (default: 0)
     :param M: binary mask of the same size as X, used to ignore a subset of the data during training (default: use all data)
-    :param use_W_update: set to True for more accurate results; set to False for faster results (default: True)
     :param W_fixed: if true, fix factors (W), e.g. for cross validation (default: False)
 
     :return:
@@ -40,104 +77,45 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
     :loadings: the per-factor loadings-- i.e. the explanatory power of each individual factor
     :power: the total power (across all factors) explained by the full reconstruction
     '''
+    assert np.all(X >= 0), 'all data values must be positive!'
+    
     N = X.shape[0]
     T = X.shape[1] + 2 * L
-    X = np.concatenate((np.zeros([N, L]), X, np.zeros([N, L])), axis=1)
+    X = jnp.concatenate((jnp.zeros([N, L]), X, jnp.zeros([N, L])), axis=1)
 
     if W_init is None:
-        W_init = np.max(X) * np.random.rand(N, K, L)
+        W_init = jnp.array(np.max(X) * np.random.rand(N, K, L))
     if H_init is None:
-        H_init = np.max(X) * np.random.rand(K, T) / np.sqrt(T / 3)
+        H_init = jnp.array(np.max(X) * np.random.rand(K, T) / np.sqrt(T / 3))
     if M is None:
-        M = np.ones([N, T])
-
-    assert np.all(X >= 0), 'all data values must be positive!'
+        M = jnp.ones([N, T])
 
     W = W_init
     H = H_init
 
     X_hat = reconstruct(W, H)
-    mask = M == 0
-    X[mask] = X_hat[mask]
+    X = jnp.where(M==0, X_hat, X)
 
-    smooth_kernel = np.ones([1, (2 * L) - 1])
-    eps = np.max(X) * 1e-6
+    smooth_kernel = jnp.ones([1, (2 * L) - 1])
+    eps = jnp.max(X) * 1e-6
     last_time = False
 
-    cost = np.zeros([max_iter + 1, 1])
-    cost[0] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
+    costs = np.zeros(max_iter + 1)
+    costs[0] = jnp.sqrt(jnp.mean(np.power(X - X_hat, 2)))
+    
+    update = jax.jit(lambda W,H,X,X_hat,Lambda: seqnmf_iter(
+        W, H, X, X_hat, Lambda, M, L, K, smooth_kernel, shift, eps,
+        W_fixed, lambda_OrthW, lambda_OrthH, lambda_L1W, lambda_L1H))
 
-    for i in np.arange(max_iter):
-        if (i == max_iter - 1) or ((i > 6) and (cost[i + 1] + tol) > np.mean(cost[i - 6:i])):
-            cost = cost[:(i + 2)]
+    for i in tqdm.trange(max_iter):
+        if (i == max_iter - 1) or ((i > 6) and (costs[i + 1] + tol) > np.mean(costs[i - 6:i])):
+            costs = costs[:(i + 2)]
             last_time = True
-            if i > 0:
-                Lambda = 0
-
-        WTX = np.zeros([K, T])
-        WTX_hat = np.zeros([K, T])
-        for j in np.arange(L):
-            X_shifted = np.roll(X, -j + 1, axis=1)
-            X_hat_shifted = np.roll(X_hat, -j + 1, axis=1)
-
-            WTX += np.dot(W[:, :, j].T, X_shifted)
-            WTX_hat += np.dot(W[:, :, j].T, X_hat_shifted)
-
-        if Lambda > 0:
-            dRdH = np.dot(Lambda * (1 - np.eye(K)), conv2(WTX, smooth_kernel, 'same'))
-        else:
-            dRdH = 0
-
-        if lambda_OrthH > 0:
-            dHHdH = np.dot(lambda_OrthH * (1 - np.eye(K)), conv2(H, smooth_kernel, 'same'))
-        else:
-            dHHdH = 0
-
-        dRdH += lambda_L1H + dHHdH
-
-        H *= np.divide(WTX, WTX_hat + dRdH + eps)
-
-        if shift:
-            W, H = shift_factors(W, H)
-            W += eps
-
-        norms = np.sqrt(np.sum(np.power(H, 2), axis=1)).T
-        H = np.dot(np.diag(np.divide(1., norms + eps)), H)
-        for j in np.arange(L):
-            W[:, :, j] = np.dot(W[:, :, j], np.diag(norms))
-
-        if not W_fixed:
-            X_hat = reconstruct(W, H)
-            mask = M == 0
-            X[mask] = X_hat[mask]
-
-            if lambda_OrthW > 0:
-                W_flat = np.sum(W, axis=2)
-            if (Lambda > 0) and use_W_update:
-                XS = conv2(X, smooth_kernel, 'same')
-
-            for j in np.arange(L):
-                H_shifted = np.roll(H, j - 1, axis=1)
-                XHT = np.dot(X, H_shifted.T)
-                X_hat_HT = np.dot(X_hat, H_shifted.T)
-
-                if (Lambda > 0) and use_W_update:
-                    dRdW = Lambda * np.dot(np.dot(XS, H_shifted.T), (1. - np.eye(K)))
-                else:
-                    dRdW = 0
-
-                if lambda_OrthW > 0:
-                    dWWdW = np.dot(lambda_OrthW * W_flat, 1. - np.eye(K))
-                else:
-                    dWWdW = 0
-
-                dRdW += lambda_L1W + dWWdW
-                W[:, :, j] *= np.divide(XHT, X_hat_HT + dRdW + eps)
-
-        X_hat = reconstruct(W, H)
-        mask = M == 0
-        X[mask] = X_hat[mask]
-        cost[i + 1] = np.sqrt(np.mean(np.power(X - X_hat, 2)))
+            if i > 0: Lambda = 0
+                
+        W, H, X, X_hat, cost = update(W, H, X, X_hat, Lambda)
+        costs[i] = cost
+        
 
         if plot_it:
             if i > 0:
@@ -152,57 +130,19 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
         if last_time:
             break
 
-    X = X[:, L:-L]
-    X_hat = X_hat[:, L:-L]
-    H = H[:, L:-L]
-
+    W = np.array(W)
+    X = np.array(X[:, L:-L])
+    X_hat = np.array(X_hat[:, L:-L])
+    H = np.array(H[:, L:-L])
     power = np.divide(np.sum(np.power(X, 2)) - np.sum(np.power(X - X_hat, 2)), np.sum(np.power(X, 2)))
-
+    
+    tt = time.time()
     loadings = compute_loadings_percent_power(X, W, H)
 
     if sort_factors:
         inds = np.flip(np.argsort(loadings), 0)
         loadings = loadings[inds]
-
         W = W[:, inds, :]
         H = H[inds, :]
-
-    return W, H, cost, loadings, power
-
-
-def plot(W, H, cmap='gray_r', factor_cmap='Spectral'):
-    '''
-    :param W: N (features) by K (factors) by L (per-factor timepoints) tensor of factors
-    :param H: K (factors) by T (timepoints) matrix of factor loadings (i.e. factor timecourses)
-    :param cmap: colormap used to draw heatmaps for the factors, factor loadings, and data reconstruction
-    :param factor_cmap: colormap used to distinguish individual factors
-    :return f: matplotlib figure handle
-    '''
-
-    N, K, L, T = get_shapes(W, H)
-    W, H = trim_shapes(W, H, N, K, L, T)
-
-    data_recon = reconstruct(W, H)
-
-    fig = plt.figure(figsize=(5, 5))
-    gs = gridspec.GridSpec(2, 2, width_ratios=[1, 4], height_ratios=[1, 4])
-    ax_h = plt.subplot(gs[1])
-    ax_w = plt.subplot(gs[2])
-    ax_data = plt.subplot(gs[3])
-
-    # plot W, H, and data_recon
-    sns.heatmap(np.hstack(list(map(np.squeeze, np.split(W, K, axis=1)))), cmap=cmap, ax=ax_w, cbar=False)
-    sns.heatmap(H, cmap=cmap, ax=ax_h, cbar=False)
-    sns.heatmap(data_recon, cmap=cmap, ax=ax_data, cbar=False)
-
-    # add dividing bars for factors of W and H
-    factor_colors = sns.color_palette(factor_cmap, K)
-    for k in np.arange(K):
-        plt.sca(ax_w)
-        start_w = k * L
-        plt.plot([start_w, start_w], [0, N - 1], '-', color=factor_colors[k])
-
-        plt.sca(ax_h)
-        plt.plot([0, T - 1], [k, k], '-', color=factor_colors[k])
-
-    return fig
+        
+    return W, H, costs, loadings, power
