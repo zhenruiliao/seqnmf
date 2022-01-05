@@ -1,11 +1,11 @@
 from jax.scipy.signal import convolve2d as conv2
 import jax, jax.numpy as jnp
-
+import tqdm
 import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes, 
+from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes, shifted_matrix_product
 
 
 def update_W(W, H, X, Lambda, M, L, K, smooth_kernel, eps, lambda_OrthW, lambda_L1W):
@@ -101,7 +101,7 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
     last_time = False
 
     costs = np.zeros(max_iter + 1)
-    costs[0] = jnp.sqrt(jnp.mean(np.power(X - X_hat, 2)))
+    costs[0] = jnp.sqrt(jnp.mean(jnp.power(X - X_hat, 2)))
     
     update = jax.jit(lambda W,H,X,X_hat,Lambda: seqnmf_iter(
         W, H, X, X_hat, Lambda, M, L, K, smooth_kernel, shift, eps,
@@ -130,15 +130,17 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
         if last_time:
             break
 
-    W = np.array(W)
-    X = np.array(X[:, L:-L])
-    X_hat = np.array(X_hat[:, L:-L])
-    H = np.array(H[:, L:-L])
-    power = np.divide(np.sum(np.power(X, 2)) - np.sum(np.power(X - X_hat, 2)), np.sum(np.power(X, 2)))
-    
-    tt = time.time()
+    X = X[:, L:-L]
+    X_hat = X_hat[:, L:-L]
+    H = H[:, L:-L]
+    power = jnp.divide(jnp.sum(jnp.power(X, 2)) - jnp.sum(jnp.power(X - X_hat, 2)), jnp.sum(jnp.power(X, 2)))
     loadings = compute_loadings_percent_power(X, W, H)
 
+    W = np.array(W)
+    H = np.array(H)
+    power = np.array(power)
+    loadings = np.array(loadings)
+    
     if sort_factors:
         inds = np.flip(np.argsort(loadings), 0)
         loadings = loadings[inds]
@@ -146,3 +148,42 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
         H = H[inds, :]
         
     return W, H, costs, loadings, power
+
+
+
+def plot(W, H, cmap='gray_r', factor_cmap='Spectral'):
+    '''
+    :param W: N (features) by K (factors) by L (per-factor timepoints) tensor of factors
+    :param H: K (factors) by T (timepoints) matrix of factor loadings (i.e. factor timecourses)
+    :param cmap: colormap used to draw heatmaps for the factors, factor loadings, and data reconstruction
+    :param factor_cmap: colormap used to distinguish individual factors
+    :return f: matplotlib figure handle
+    '''
+
+    N, K, L, T = get_shapes(W, H)
+    W, H = trim_shapes(W, H, N, K, L, T)
+
+    data_recon = reconstruct(W, H)
+
+    fig = plt.figure(figsize=(5, 5))
+    gs = gridspec.GridSpec(2, 2, width_ratios=[1, 4], height_ratios=[1, 4])
+    ax_h = plt.subplot(gs[1])
+    ax_w = plt.subplot(gs[2])
+    ax_data = plt.subplot(gs[3])
+
+    # plot W, H, and data_recon
+    sns.heatmap(np.hstack(list(map(np.squeeze, np.split(W, K, axis=1)))), cmap=cmap, ax=ax_w, cbar=False)
+    sns.heatmap(H, cmap=cmap, ax=ax_h, cbar=False)
+    sns.heatmap(data_recon, cmap=cmap, ax=ax_data, cbar=False)
+
+    # add dividing bars for factors of W and H
+    factor_colors = sns.color_palette(factor_cmap, K)
+    for k in np.arange(K):
+        plt.sca(ax_w)
+        start_w = k * L
+        plt.plot([start_w, start_w], [0, N - 1], '-', color=factor_colors[k])
+
+        plt.sca(ax_h)
+        plt.plot([0, T - 1], [k, k], '-', color=factor_colors[k])
+
+    return fig
