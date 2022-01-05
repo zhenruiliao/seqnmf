@@ -2,3 +2,5 @@ numpy
 matplotlib
 scipy
 seaborn
+jax
+tqdm
