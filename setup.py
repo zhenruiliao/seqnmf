@@ -3,19 +3,18 @@ from setuptools import setup, find_packages
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
 
-readme = 'Python implementation of seqNMF.  For more information visit https://github.com/ContextLab/seqnmf.'
+readme = 'JAX implementation of seqNMF.  For more information visit https://github.com/calebweinreb/seqnmf-gpu.'
 
 with open('LICENSE') as f:
     license = f.read()
 
 setup(
     name='seqnmf',
-    version='0.1.3',
-    description='Python implementation of seqNMF',
+    description='JAX implementation of seqNMF',
     long_description=readme,
-    author='Contextual Dynamics Laboratory',
-    author_email='contextualdynamics@gmail.com',
-    url='https://www.context-lab.com',
+    author='Caleb Weinreb',
+    author_email='calebsw@gmail.com',
+    url='https://github.com/calebweinreb/seqnmf-gpu',
     license=license,
     install_requires=requirements,
     package_data = {'seqnmf':['data/MackeviciusData.mat']},
