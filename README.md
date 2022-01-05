@@ -51,7 +51,7 @@ An example dataset, ported from the MATLAB toolbox, is provided as part of the s
 ```
 from seqnmf import seqnmf, plot, example_data
 
-[W, H, cost, loadings, power] = seqnmf(example_data, K=20, L=100, Lambda=0.001, plot_it=True)
+[W, H, cost, loadings, power] = seqnmf(example_data, K=20, L=100, Lambda=0.001, plot_it=False)
 
 plot(W, H).show()
 ```

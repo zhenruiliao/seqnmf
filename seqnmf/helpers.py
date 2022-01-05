@@ -19,6 +19,18 @@ def reconstruct(W, H):
     X_hat = jax.vmap(lambda t: jnp.dot(W[:, :, t], jnp.roll(H, t - 1, axis=1)))(jnp.arange(L)).sum(0)
     return X_hat[:, L:-L]
 
+def reconstruct_numpy(W, H):
+    N, K, L, T = get_shapes(W, H)
+    W, H = trim_shapes(W, H, N, K, L, T)
+
+    H = np.hstack((np.zeros([K, L]), H, np.zeros([K, L])))
+    T += 2 * L
+    X_hat = np.zeros([N, T])
+
+    for t in np.arange(L):
+        X_hat += np.dot(W[:, :, t], np.roll(H, t - 1, axis=1))
+
+    return X_hat[:, L:-L]
 
 def shift_factors(WH):
     W,H = WH

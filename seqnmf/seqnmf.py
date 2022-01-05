@@ -5,7 +5,7 @@ import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
-from .helpers import reconstruct, shift_factors, compute_loadings_percent_power, get_shapes, shifted_matrix_product
+from .helpers import reconstruct, reconstruct_numpy, shift_factors, compute_loadings_percent_power, get_shapes, shifted_matrix_product, trim_shapes
 
 
 def update_W(W, H, X, Lambda, M, L, K, smooth_kernel, eps, lambda_OrthW, lambda_L1W):
@@ -163,7 +163,7 @@ def plot(W, H, cmap='gray_r', factor_cmap='Spectral'):
     N, K, L, T = get_shapes(W, H)
     W, H = trim_shapes(W, H, N, K, L, T)
 
-    data_recon = reconstruct(W, H)
+    data_recon = reconstruct_numpy(W, H)
 
     fig = plt.figure(figsize=(5, 5))
     gs = gridspec.GridSpec(2, 2, width_ratios=[1, 4], height_ratios=[1, 4])
