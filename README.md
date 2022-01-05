@@ -1,6 +1,6 @@
 # seqNMF (GPU implementation)
 
-This is a [JAX](https://github.com/google/jax) implementation of seqNMF, a tool for unsupervised discovery of temporal sequences in high-dimensional data. With GPU accelation, the code runs ~400X faster than the original Numpy implementation. 
+This is a [JAX](https://github.com/google/jax) implementation of seqNMF, a tool for unsupervised discovery of temporal sequences in high-dimensional data. With GPU accelation, the code runs ~200X faster than the original Numpy implementation. 
 
 - Credit for MATLAB toolbox: [Emily Mackevicius, Andrew Bahle, and the Fee Lab](http://web.mit.edu/feelab/).
 - Credit for Numpy implementation and README: [Jeremy Manning](http://www.context-lab.com/)
