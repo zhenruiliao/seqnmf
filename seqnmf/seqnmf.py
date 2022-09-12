@@ -101,7 +101,7 @@ def seqnmf(X, K=10, L=100, Lambda=.001, W_init=None, H_init=None,
     eps = jnp.max(X) * 1e-6
     last_time = False
 
-    costs = np.zeros(max_iter + 1)
+    costs = jnp.zeros(max_iter + 1)
     costs[0] = jnp.sqrt(jnp.mean(jnp.power(X - X_hat, 2)))
     
     update = jax.jit(lambda W,H,X,X_hat,Lambda: seqnmf_iter(
