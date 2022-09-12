@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from .helpers import reconstruct, reconstruct_numpy, shift_factors, compute_loadings_percent_power, get_shapes, shifted_matrix_product, trim_shapes
 
+from sklearn.cluster import KMeans
 
 def update_W(W, H, X, Lambda, M, L, K, smooth_kernel, eps, lambda_OrthW, lambda_L1W):
     X_hat = reconstruct(W, H)
@@ -187,3 +188,65 @@ def plot(W, H, cmap='gray_r', factor_cmap='Spectral'):
         plt.plot([0, T - 1], [k, k], '-', color=factor_colors[k])
 
     return fig
+
+def cluster_by_factor(W, nclust):
+    N,K,L = W.shape
+    max_factor = []
+    clust = np.zeros((K, N))
+    L_sort = np.zeros((K, N))
+    max_sort = np.zeros((K, N))
+
+    for k in range(K):
+        data = W[:,k,:]
+        fact = np.zeros_like(data)
+        for j in range(len(data)):
+            fact[j] = data[j] == np.max(data[j])
+            if fact[j].sum() > 1:
+                fact[j] = 0.
+        max_factor.append(fact)
+        clust[k] = data.max(axis=1)
+        tmp, _ = np.where(fact)
+        if not len(tmp):
+            tmp = 0
+        L_sort[k] = tmp
+
+        xx = np.argsort(np.max(data, axis=1))
+        max_sort[k] = xx[::-1]
+
+    kmeans = KMeans(n_clusters=nclust)
+    idx = kmeans.fit_predict(clust.T)
+
+    pos = np.zeros((N, 3))
+    pos[:, 2] = np.arange(N)
+
+    for i in range(N):
+        nni = W[i].reshape(K,L)
+        try:
+            pos[i,1], pos[i,0] = np.where(nni == nni.ravel().max())
+        except:
+            pos[i,:2] = [L-1, K]
+
+    hybrid = np.zeros((N, 4))
+    hybrid[:, :3] = pos
+    yy = np.argsort(pos[:, 1])
+
+    hybrid = hybrid[yy]
+
+    temp = []
+
+    for ii in range(K+1):
+        hy = hybrid[hybrid[:, 1] == ii]
+        yy = np.argsort(-hy[:, 0])
+        temp.append(hy[yy])
+
+    hybrid = np.vstack(temp).astype(int)
+    hybrid[:, 3] = idx[hybrid[:, 2]]
+
+    ii = np.argsort(hybrid[:, 3])
+    
+    return hybrid
+    
+    
+        
+    
+    
